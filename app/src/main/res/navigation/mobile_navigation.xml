@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@id/item_home">
+
+    <fragment
+        android:id="@+id/item_home"
+        android:name="com.example.ui.ui.home.HomeFragment"
+        android:label="메인화면"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/item_myinfo"
+        android:name="com.example.ui.ui.myinfo.myinfoFragment"
+        android:label="내 정보"
+        tools:layout="@layout/fragment_my_info" />
+
+    <fragment
+        android:id="@+id/item_stretch"
+        android:name="com.example.ui.ui.stretchmarket.stretchMarketFragment"
+        android:label="Stretch Market"
+        tools:layout="@layout/fragment_stretchmarket" />
+
+    <fragment
+        android:id="@+id/item_todo"
+        android:name="com.example.ui.ui.todo.TodoFragment"
+        android:label="ToDoStretch"
+        tools:layout="@layout/fragment_todostretch" />
+
+    <fragment
+        android:id="@+id/item_monitoring"
+        android:name="com.example.ui.ui.monitoring.MonitoringFragment"
+        android:label="모니터링"
+        tools:layout="@layout/fragment_monitoring" />
+
+</navigation>
