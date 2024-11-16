@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1039262039963",
+    "project_id": "appui-8b397",
+    "storage_bucket": "appui-8b397.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1039262039963:android:fab81bee8796bf3f242b3e",
+        "android_client_info": {
+          "package_name": "com.example.ui"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7V5IxYb4ZLW7Px1liDCJ4n47egOVbkok"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
