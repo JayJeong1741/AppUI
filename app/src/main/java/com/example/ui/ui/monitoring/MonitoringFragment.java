@@ -1,11 +1,7 @@
 package com.example.ui.ui.monitoring;
 
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
+import android.annotation.SuppressLint;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,7 +38,6 @@ public class MonitoringFragment extends Fragment {
     private static final String SOCKET_URL = "http://192.168.35.206:3000"; // 로컬 서버 주소
     private EglBase eglBase;
     private SurfaceViewRenderer remoteVideoView;
-    private Button btn;
 
 
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -53,7 +48,7 @@ public class MonitoringFragment extends Fragment {
         predict = view.findViewById(R.id.predict);
         remoteVideoView = view.findViewById(R.id.remote_video_view);
         eglBase = EglBase.create();
-        btn = view.findViewById(R.id.button);
+        Button btn = view.findViewById(R.id.button);
 
         btn.setOnClickListener((View btnView) -> {
             NavController navController = Navigation.findNavController(requireView());
@@ -156,6 +151,7 @@ public class MonitoringFragment extends Fragment {
 
                     }
 
+                    @SuppressLint("SetTextI18n")
                     @Override
                     public void onMessage(DataChannel.Buffer buffer) {
                         try {
