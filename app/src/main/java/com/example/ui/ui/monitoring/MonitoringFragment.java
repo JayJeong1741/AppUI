@@ -1,10 +1,16 @@
 package com.example.ui.ui.monitoring;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.TextView;
 
 import io.socket.client.IO;
@@ -20,18 +26,24 @@ import org.webrtc.*;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 
 import com.example.ui.R;
+
+
 
 public class MonitoringFragment extends Fragment {
     private PeerConnectionFactory peerConnectionFactory;
     private PeerConnection peerConnection;
     private Socket mSocket;
     private static final String TAG = "WebRTC_LOCAL";
-    private TextView statusText, predict;
-    private static final String SOCKET_URL = "http://192.168.35.37:3000"; // 로컬 서버 주소
+    private TextView  predict;
+    private static final String SOCKET_URL = "http://192.168.35.206:3000"; // 로컬 서버 주소
     private EglBase eglBase;
     private SurfaceViewRenderer remoteVideoView;
+    private Button btn;
+
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container,
@@ -40,13 +52,38 @@ public class MonitoringFragment extends Fragment {
 
         predict = view.findViewById(R.id.predict);
         remoteVideoView = view.findViewById(R.id.remote_video_view);
-        statusText = view.findViewById(R.id.statusText);
         eglBase = EglBase.create();
+        btn = view.findViewById(R.id.button);
+
+        btn.setOnClickListener((View btnView) -> {
+            NavController navController = Navigation.findNavController(requireView());
+            navController.popBackStack(); // 현재 프래그먼트 제거
+            if (remoteVideoView != null) {
+                remoteVideoView.release();
+                remoteVideoView = null;
+            }
+            if (peerConnection != null) {
+                peerConnection.dispose();
+                peerConnection = null;
+            }
+            if (peerConnectionFactory != null) {
+                peerConnectionFactory.dispose();
+                peerConnectionFactory = null;
+            }
+            if (eglBase != null) {
+                eglBase.release();
+                eglBase = null;
+            }
+            if (mSocket != null) {
+                mSocket.disconnect();
+                mSocket.off();
+                mSocket = null;
+            }
+        });
         initViews();
         initWebRTC();
         initSocket();
         return view;
-
     }
     private void initViews() {
         remoteVideoView.init(eglBase.getEglBaseContext(), null);
@@ -188,11 +225,6 @@ public class MonitoringFragment extends Fragment {
     private void setupSocketListeners() {
         mSocket.on(Socket.EVENT_CONNECT, args -> {
             Log.d(TAG, "Connected to server");
-
-            requireActivity().runOnUiThread(() -> {
-                // UI 업데이트 코드 작성
-                statusText.setText("Connected to server");
-            });
             // 연결 즉시 방 참여
             mSocket.emit("join_room", "1234");
         });
@@ -298,24 +330,4 @@ public class MonitoringFragment extends Fragment {
         public void onSetFailure(String s) {}
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (remoteVideoView != null) {
-            remoteVideoView.release();
-        }
-        if (peerConnection != null) {
-            peerConnection.dispose();
-        }
-        if (peerConnectionFactory != null) {
-            peerConnectionFactory.dispose();
-        }
-        if (eglBase != null) {
-            eglBase.release();
-        }
-        if (mSocket != null) {
-            mSocket.disconnect();
-            mSocket.off();
-        }
-    }
 }
