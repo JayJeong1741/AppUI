@@ -158,7 +158,7 @@ public class MonitoringFragment extends Fragment {
 
                                         // 카운트가 목표에 도달했을 경우 Firebase 저장
                                         if (highValueCount >= TARGET_COUNT) {
-                                            manager.savePostureData(10);
+                                            manager.savePostureData();
                                             System.out.println("저장됨");
                                             // 초기화
                                             highValueCount = 0; // 카운트 초기화

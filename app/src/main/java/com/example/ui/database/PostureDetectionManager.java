@@ -9,7 +9,7 @@ public class PostureDetectionManager extends FirebaseManager {
     private static final String TAG = "PostureDetectionManager";
 
     // 데이터 저장 메서드
-    public void savePostureData(int count) {
+    public void savePostureData() {
         // Firebase 경로 설정
         String path = "tutleneck"; // tutleneck 목록
 
@@ -20,7 +20,7 @@ public class PostureDetectionManager extends FirebaseManager {
         Map<String, Object> data = new HashMap<>();
         data.put("timestamp", timestamp); // 현재 시간
 //        data.put("id", userId); // 사용자 ID
-        data.put("high_value_count", count); // 카운트 값
+//        data.put("high_value_count", count); // 카운트 값
 
         // 고유 ID를 생성 (timestamp를 사용하여 고유하게 만들 수 있음)
         String uniqueId = String.valueOf(System.currentTimeMillis()); // 예시로 현재 시간을 사용
