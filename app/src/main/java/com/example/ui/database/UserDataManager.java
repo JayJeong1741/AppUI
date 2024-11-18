@@ -11,18 +11,16 @@ public class UserDataManager {
     }
 
     // 사용자 데이터 저장
-    public void saveUserData(String userId, String name, String id, String password) {
+    public void saveUserData(String id, String name, String password) {
         Map<String, Object> userData = new HashMap<>();
         userData.put("name", name);
-        userData.put("id", name);
         userData.put("password", name);
 
-
-        firebaseManager.writeData("users/" + userId, userData);
+        firebaseManager.writeData("users/" + id, userData);
     }
 
     // 사용자 데이터 읽기
-    public void getUserData(String userId, FirebaseManager.FirebaseCallback callback) {
-        firebaseManager.readData("users/" + userId, callback);
+    public void getUserData(String id, FirebaseManager.FirebaseCallback callback) {
+        firebaseManager.readData("users/" + id, callback);
     }
 }
