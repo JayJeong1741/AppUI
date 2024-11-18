@@ -1,10 +1,13 @@
 package com.example.ui.ui.monitoring;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.TextView;
 
 import io.socket.client.IO;
@@ -15,23 +18,39 @@ import org.json.JSONObject;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
 import org.webrtc.*;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 
 import com.example.ui.R;
+import com.example.ui.database.PostureDetectionManager;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
 
 public class MonitoringFragment extends Fragment {
+
+    private int highValueCount = 0; // 90 이상 값의 카운트
+    private static final int TARGET_COUNT = 5; // 목표 카운트
     private PeerConnectionFactory peerConnectionFactory;
     private PeerConnection peerConnection;
     private Socket mSocket;
     private static final String TAG = "WebRTC_LOCAL";
     private TextView statusText, predict;
-    private static final String SOCKET_URL = "http://192.168.35.37:3000"; // 로컬 서버 주소
+    private static final String SOCKET_URL = "http://172.171.240.32:3000"; // 로컬 서버 주소
     private EglBase eglBase;
     private SurfaceViewRenderer remoteVideoView;
+    PostureDetectionManager manager = new PostureDetectionManager();
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container,
@@ -119,6 +138,7 @@ public class MonitoringFragment extends Fragment {
 
                     }
 
+                    @SuppressLint("SetTextI18n")
                     @Override
                     public void onMessage(DataChannel.Buffer buffer) {
                         try {
@@ -128,6 +148,29 @@ public class MonitoringFragment extends Fragment {
                                 data.get(bytes);
                                 final String text = new String(bytes, StandardCharsets.UTF_8);
                                 Log.d(TAG, "Received text message: " + text);
+                                double value = Double.parseDouble(text);
+
+
+                                    // 데이터가 90 이상일 경우 카운트 증가
+                                    if (value >= 90) {
+                                        highValueCount++;
+                                        Log.d(TAG, "Count 증가: " + highValueCount);
+
+                                        // 카운트가 목표에 도달했을 경우 Firebase 저장
+                                        if (highValueCount >= TARGET_COUNT) {
+                                            manager.savePostureData(10);
+                                            System.out.println("저장됨");
+                                            // 초기화
+                                            highValueCount = 0; // 카운트 초기화
+                                        }
+                                    } else {
+                                        // 데이터가 90 이하일 경우 카운트 초기화
+                                        highValueCount = 0;
+                                        Log.d(TAG, "Count 초기화: " + highValueCount);
+                                    }
+
+
+
                                 requireActivity().runOnUiThread(() -> {
                                     // UI 업데이트 코드 작성
                                     predict.setText("거북목 예측도 : " + text);
@@ -141,7 +184,6 @@ public class MonitoringFragment extends Fragment {
 
                 });
             }
-
             @Override
             public void onRenegotiationNeeded() {
                 Log.d(TAG, "onRenegotiationNeeded");
