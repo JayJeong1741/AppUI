@@ -1,7 +1,12 @@
 package com.example.ui.ui.monitoring;
 
 import android.annotation.SuppressLint;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,6 +43,8 @@ public class MonitoringFragment extends Fragment {
     private static final String SOCKET_URL = "http://192.168.35.206:3000"; // 로컬 서버 주소
     private EglBase eglBase;
     private SurfaceViewRenderer remoteVideoView;
+    private WebRTCService webRTCService;
+    private boolean isBound = false;
 
 
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -49,6 +56,10 @@ public class MonitoringFragment extends Fragment {
         remoteVideoView = view.findViewById(R.id.remote_video_view);
         eglBase = EglBase.create();
         Button btn = view.findViewById(R.id.button);
+        Button btnStart = view.findViewById(R.id.start);
+
+
+
 
         btn.setOnClickListener((View btnView) -> {
             NavController navController = Navigation.findNavController(requireView());
@@ -74,7 +85,16 @@ public class MonitoringFragment extends Fragment {
                 mSocket.off();
                 mSocket = null;
             }
+
+            Intent stopIntent = new Intent(requireActivity(), WebRTCService.class);
+            requireActivity().stopService(stopIntent);
         });
+
+        btnStart.setOnClickListener((View btnView) -> {
+            Intent serviceIntent = new Intent(requireActivity(), WebRTCService.class);
+            requireActivity().startService(serviceIntent);
+        });
+
         initViews();
         initWebRTC();
         initSocket();
@@ -109,6 +129,26 @@ public class MonitoringFragment extends Fragment {
         rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
 
         peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, new PeerConnection.Observer() {
+            @Override
+            public void onSignalingChange(PeerConnection.SignalingState signalingState) {
+
+            }
+
+            @Override
+            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
+
+            }
+
+            @Override
+            public void onIceConnectionReceivingChange(boolean b) {
+
+            }
+
+            @Override
+            public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
+
+            }
+
             @Override
             public void onIceCandidate(IceCandidate iceCandidate) {
                 Log.d(TAG, "onIceCandidate: " + iceCandidate.sdp);
@@ -177,27 +217,7 @@ public class MonitoringFragment extends Fragment {
 
             @Override
             public void onRenegotiationNeeded() {
-                Log.d(TAG, "onRenegotiationNeeded");
-            }
 
-            @Override
-            public void onSignalingChange(PeerConnection.SignalingState signalingState) {
-                Log.d(TAG, "onSignalingChange: " + signalingState);
-            }
-
-            @Override
-            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-                Log.d(TAG, "onIceConnectionChange: " + iceConnectionState);
-            }
-
-            @Override
-            public void onIceConnectionReceivingChange(boolean b) {
-                Log.d(TAG, "onIceConnectionReceivingChange: " + b);
-            }
-
-            @Override
-            public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
-                Log.d(TAG, "onIceGatheringChange: " + iceGatheringState);
             }
         });
     }
@@ -279,7 +299,7 @@ public class MonitoringFragment extends Fragment {
         mediaConstraints.mandatory.add(
                 new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
         mediaConstraints.mandatory.add(
-                new MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"));
+                new MediaConstraints.KeyValuePair("OfferToReceiveAudio", "false"));
 
         peerConnection.createAnswer(new SimpleSdpObserver() {
             @Override

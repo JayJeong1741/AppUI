@@ -33,6 +33,7 @@
             android:name=".ui.user.SignupActivity"
             android:exported="false"
             android:label="@string/signup" />
+        <service android:name=".ui.monitoring.WebRTCService"/>
 </application>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
