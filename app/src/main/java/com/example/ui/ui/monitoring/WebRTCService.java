@@ -18,6 +18,8 @@ import io.socket.client.Socket;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -28,11 +30,17 @@ public class WebRTCService extends Service {
     private PeerConnection peerConnection;
     private Socket mSocket;
     private static final String TAG = "WebRTC_SERVICE";
-    private static final String SOCKET_URL = "http://192.168.35.206:3000";
+    private static final String SOCKET_URL = "http://172.171.240.32:3000";
     private EglBase eglBase;
     private final IBinder binder = new LocalBinder();
     private VideoSink remoteVideoSink;
     private DataChannel.Observer dataChannelObserver;
+    private WebRTCMessageListener messageListener;
+
+    // 리스너 설정 메소드
+    public void setMessageListener(WebRTCMessageListener listener) {
+        this.messageListener = listener;
+    }
 
     // Socket 관련 변수들
     private boolean isSocketConnected = false;
@@ -150,7 +158,6 @@ public class WebRTCService extends Service {
                     });
                 }
             }
-
             @Override
             public void onRemoveStream(MediaStream mediaStream) {
                 Log.d(TAG, "onRemoveStream");
@@ -158,10 +165,43 @@ public class WebRTCService extends Service {
 
             @Override
             public void onDataChannel(DataChannel dataChannel) {
-                Log.d(TAG, "onDataChannel");
-                if (dataChannelObserver != null) {
+                    Log.d(TAG, "onDataChannel");
                     dataChannel.registerObserver(dataChannelObserver);
-                }
+                    dataChannel.registerObserver(new DataChannel.Observer() {
+                        @Override
+                        public void onBufferedAmountChange(long previousAmount) {
+                            Log.d(TAG, "Buffered amount changed: " + previousAmount);
+                        }
+
+                        @Override
+                        public void onStateChange() {
+
+                        }
+
+                        @Override
+                        public void onMessage(DataChannel.Buffer buffer) {
+                            try {
+                                if (!buffer.binary) {
+                                    ByteBuffer data = buffer.data;
+                                    byte[] bytes = new byte[data.remaining()];
+                                    data.get(bytes);
+                                    final String text = new String(bytes, StandardCharsets.UTF_8);
+                                    Log.d(TAG, "Received text message: " + text);
+
+                                    if (messageListener != null) {
+                                        // UI 스레드에서 콜백 실행
+                                        new Handler(Looper.getMainLooper()).post(() -> {
+                                            messageListener.onMessageReceived(text);
+                                        });
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error processing message: " + e.getMessage());
+                            }
+                        }
+
+                    });
+
             }
 
             @Override
@@ -173,9 +213,10 @@ public class WebRTCService extends Service {
             public void onIceCandidatesRemoved(IceCandidate[] iceCandidates) {
                 Log.d(TAG, "onIceCandidatesRemoved");
             }
+
+
         });
     }
-
     private void initSocket() {
         Log.d(TAG, "Initializing socket connection to: " + SOCKET_URL);
         try {
