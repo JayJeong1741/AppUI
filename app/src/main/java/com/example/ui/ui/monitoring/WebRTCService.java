@@ -1,7 +1,5 @@
 package com.example.ui.ui.monitoring;
 
-import static android.content.ContentValues.TAG;
-
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
@@ -10,7 +8,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
-import androidx.core.app.ServiceCompat;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -30,7 +27,7 @@ public class WebRTCService extends Service {
     private PeerConnection peerConnection;
     private Socket mSocket;
     private static final String TAG = "WebRTC_SERVICE";
-    private static final String SOCKET_URL = "http://172.171.240.32:3000";
+    private static final String SOCKET_URL = "http://192.168.35.206:3000";
     private EglBase eglBase;
     private final IBinder binder = new LocalBinder();
     private VideoSink remoteVideoSink;
@@ -76,11 +73,6 @@ public class WebRTCService extends Service {
     public void setRemoteVideoSink(VideoSink sink) {
         this.remoteVideoSink = sink;
         Log.d(TAG, "Remote video sink set");
-    }
-
-    public void setDataChannelObserver(DataChannel.Observer observer) {
-        this.dataChannelObserver = observer;
-        Log.d(TAG, "Data channel observer set");
     }
 
     @Override
@@ -430,4 +422,5 @@ public class WebRTCService extends Service {
         super.onTaskRemoved(rootIntent);
         stopSelf();
     }
+
 }

@@ -29,6 +29,8 @@
         app:layout_constraintTop_toTopOf="@+id/top_bar" />
 
     <!-- 실시간 영상 확인용 -->
+
+
     <org.webrtc.SurfaceViewRenderer
         android:id="@+id/remote_video_view"
         android:layout_width="0dp"
@@ -39,8 +41,7 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.29" />
-
+        app:layout_constraintVertical_bias="0.287" />
 
     <TextView
         android:id="@+id/predict"
