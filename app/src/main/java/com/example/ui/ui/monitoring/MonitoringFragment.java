@@ -1,363 +1,168 @@
 package com.example.ui.ui.monitoring;
 
 import android.annotation.SuppressLint;
+import android.app.ActivityManager;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.Handler;
+import android.os.IBinder;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
-
-import io.socket.client.IO;
-import io.socket.client.Socket;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-
 import org.webrtc.*;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
 import com.example.ui.R;
-import com.example.ui.database.PostureDetectionManager;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-
 
 public class MonitoringFragment extends Fragment {
-
-    private int highValueCount = 0; // 90 이상 값의 카운트
-    private static final int TARGET_COUNT = 5; // 목표 카운트
-    private PeerConnectionFactory peerConnectionFactory;
-    private PeerConnection peerConnection;
-    private Socket mSocket;
-    private static final String TAG = "WebRTC_LOCAL";
-    private TextView statusText, predict;
-    private static final String SOCKET_URL = "http://172.171.240.32:3000"; // 로컬 서버 주소
-    private EglBase eglBase;
+    private TextView predict;
     private SurfaceViewRenderer remoteVideoView;
-    PostureDetectionManager manager = new PostureDetectionManager();
+    private WebRTCService webRTCService;
+    private boolean isBound = false;
+    private Intent intent;
+    private ServiceConnection serviceConnection;
 
+//onCreateView -> onViewCreate -> onStart (프래그먼트 실행 시)
+//onPause -> onDestroyView -> onDestroy (프래그먼트에서 뒤로가기, 종료버튼)
+
+
+    @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container,
                              Bundle savedInstanceState) {
+        Log.d("onCreateView","onCreateView");
         View view = inflater.inflate(R.layout.fragment_monitoring, container, false);
 
         predict = view.findViewById(R.id.predict);
-        remoteVideoView = view.findViewById(R.id.remote_video_view);
-        statusText = view.findViewById(R.id.statusText);
-        eglBase = EglBase.create();
-        initViews();
-        initWebRTC();
-        initSocket();
+
+
+        Log.d("remoteView Status in onCreateView","remoteView Status : " + remoteVideoView);
+        Button btnStop = view.findViewById(R.id.button);
+        intent = new Intent(requireActivity(), WebRTCService.class);
+        if (!isServiceRunning()) {
+            // 서비스가 실행 중이 아니면 startService 호출
+            Intent intent = new Intent(requireActivity(), WebRTCService.class);  // requireActivity() 사용
+            requireActivity().startService(intent); // startService 호출
+        }
+        setServiceConnection();
+        requireActivity().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        btnStop.setOnClickListener(v -> {
+            if (isBound) {
+                isBound = false;
+            }
+            requireActivity().stopService(intent);
+            if (remoteVideoView != null) {
+                remoteVideoView.release();
+            }
+            requireActivity().stopService(intent);
+            requireActivity().unbindService(serviceConnection);
+            NavController navController = Navigation.findNavController(requireView());
+            navController.popBackStack();
+        });
+
         return view;
-
     }
-    private void initViews() {
-        remoteVideoView.init(eglBase.getEglBaseContext(), null);
-        remoteVideoView.setMirror(false);  // 로컬 테스트에서는 미러링 불필요
-        remoteVideoView.setEnableHardwareScaler(true);
-    }
-    private void initWebRTC() {
-        // WebRTC 초기화
-        PeerConnectionFactory.InitializationOptions initializationOptions =
-                PeerConnectionFactory.InitializationOptions.builder(requireContext())
-                        .setEnableInternalTracer(true)
-                        .createInitializationOptions();
-        PeerConnectionFactory.initialize(initializationOptions);
-
-        // PeerConnectionFactory 생성
-        PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
-        peerConnectionFactory = PeerConnectionFactory.builder()
-                .setOptions(options)
-                .setVideoEncoderFactory(new DefaultVideoEncoderFactory(eglBase.getEglBaseContext(), true, true))
-                .setVideoDecoderFactory(new DefaultVideoDecoderFactory(eglBase.getEglBaseContext()))
-                .createPeerConnectionFactory();
-
-        createPeerConnection();
-    }
-    private void createPeerConnection() {
-        PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
-        // 로컬 네트워크용 설정
-        rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
-
-        peerConnection = peerConnectionFactory.createPeerConnection(rtcConfig, new PeerConnection.Observer() {
-            @Override
-            public void onIceCandidate(IceCandidate iceCandidate) {
-                Log.d(TAG, "onIceCandidate: " + iceCandidate.sdp);
-                handleIceCandidate(iceCandidate);
-            }
-
-            @Override
-            public void onAddStream(MediaStream mediaStream) {
-                Log.d(TAG, "onAddStream: " + mediaStream.toString());
-
-                requireActivity().runOnUiThread(() -> {
-                    // UI 업데이트 코드 작성
-                    if (!mediaStream.videoTracks.isEmpty()) {
-                        VideoTrack remoteVideoTrack = mediaStream.videoTracks.get(0);
-                        remoteVideoTrack.addSink(remoteVideoView);
-                    }
-                });
-            }
-            // 기타 필수 콜백 메서드들
-            @Override
-            public void onIceCandidatesRemoved(IceCandidate[] iceCandidates) {
-                Log.d(TAG, "onIceCandidatesRemoved");
-            }
-
-            @Override
-            public void onRemoveStream(MediaStream mediaStream) {
-                Log.d(TAG, "onRemoveStream");
-            }
-
-            @Override
-            public void onDataChannel(DataChannel dataChannel) {
-                dataChannel.registerObserver(new DataChannel.Observer() {
-                    @Override
-                    public void onBufferedAmountChange(long previousAmount) {
-                        Log.d(TAG, "Buffered amount changed: " + previousAmount);
-                    }
-
-                    @Override
-                    public void onStateChange() {
-
-                    }
-
-                    @SuppressLint("SetTextI18n")
-                    @Override
-                    public void onMessage(DataChannel.Buffer buffer) {
-                        try {
-                            if (!buffer.binary) {
-                                ByteBuffer data = buffer.data;
-                                byte[] bytes = new byte[data.remaining()];
-                                data.get(bytes);
-                                final String text = new String(bytes, StandardCharsets.UTF_8);
-                                Log.d(TAG, "Received text message: " + text);
-                                double value = Double.parseDouble(text);
-
-
-                                    // 데이터가 90 이상일 경우 카운트 증가
-                                    if (value >= 90) {
-                                        highValueCount++;
-                                        Log.d(TAG, "Count 증가: " + highValueCount);
-
-                                        // 카운트가 목표에 도달했을 경우 Firebase 저장
-                                        if (highValueCount >= TARGET_COUNT) {
-                                            manager.savePostureData();
-                                            System.out.println("저장됨");
-                                            // 초기화
-                                            highValueCount = 0; // 카운트 초기화
-                                        }
-                                    } else {
-                                        // 데이터가 90 이하일 경우 카운트 초기화
-                                        highValueCount = 0;
-                                        Log.d(TAG, "Count 초기화: " + highValueCount);
-                                    }
-
-
-
-                                requireActivity().runOnUiThread(() -> {
-                                    // UI 업데이트 코드 작성
-                                    predict.setText("거북목 예측도 : " + text);
-                                });
-                            }
-
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error processing message: " + e.getMessage());
-                        }
-                    }
-
-                });
-            }
-            @Override
-            public void onRenegotiationNeeded() {
-                Log.d(TAG, "onRenegotiationNeeded");
-            }
-
-            @Override
-            public void onSignalingChange(PeerConnection.SignalingState signalingState) {
-                Log.d(TAG, "onSignalingChange: " + signalingState);
-            }
-
-            @Override
-            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-                Log.d(TAG, "onIceConnectionChange: " + iceConnectionState);
-            }
-
-            @Override
-            public void onIceConnectionReceivingChange(boolean b) {
-                Log.d(TAG, "onIceConnectionReceivingChange: " + b);
-            }
-
-            @Override
-            public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
-                Log.d(TAG, "onIceGatheringChange: " + iceGatheringState);
-            }
-        });
-    }
-
-    private void initSocket() {
-        try {
-            IO.Options options = IO.Options.builder()
-                    .setForceNew(true)
-                    .setReconnection(true)
-                    .setTransports(new String[] { "websocket" })
-                    .build();
-
-            mSocket = IO.socket(SOCKET_URL, options);
-            setupSocketListeners();
-            mSocket.connect();
-        } catch (URISyntaxException e) {
-            Log.e(TAG, "Socket initialization error: " + e.getMessage());
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        Log.d("onDestroyView","onDestroyView");
+        if (isBound) {
+            requireActivity().unbindService(serviceConnection);
+            isBound = false;
         }
-    }
-
-    private void setupSocketListeners() {
-        mSocket.on(Socket.EVENT_CONNECT, args -> {
-            Log.d(TAG, "Connected to server");
-
-            requireActivity().runOnUiThread(() -> {
-                // UI 업데이트 코드 작성
-                statusText.setText("Connected to server");
-            });
-            // 연결 즉시 방 참여
-            mSocket.emit("join_room", "1234");
-        });
-
-        mSocket.on(Socket.EVENT_DISCONNECT, args -> {
-            Log.d(TAG, "Disconnected from server");
-        });
-
-        mSocket.on("offer", args -> {
-            if (args.length > 0 && args[0] != null) {
-                JSONObject offer = (JSONObject) args[0];
-                try {
-                    handleOffer(offer);
-                } catch (JSONException e) {
-                    Log.e(TAG, "Error handling offer: " + e.getMessage());
-                }
-            }
-        });
-
-        mSocket.on("ice", args -> {
-            if (args.length > 0 && args[0] != null) {
-                try {
-                    JSONObject iceCandidateJson = (JSONObject) args[0];
-                    IceCandidate iceCandidate = new IceCandidate(
-                            iceCandidateJson.getString("sdpMid"),
-                            iceCandidateJson.getInt("sdpMLineIndex"),
-                            iceCandidateJson.getString("candidate")
-                    );
-                    peerConnection.addIceCandidate(iceCandidate);
-                    Log.d(TAG, "Added remote ICE candidate: " + iceCandidate.sdp);
-                } catch (JSONException e) {
-                    Log.e(TAG, "Error handling ICE candidate: " + e.getMessage());
-                }
-            }
-        });
-    }
-
-    private void handleOffer(JSONObject offerJson) throws JSONException {
-        String sdpString = offerJson.getString("sdp");
-        SessionDescription sessionDescription = new SessionDescription(
-                SessionDescription.Type.OFFER,
-                sdpString
-        );
-
-        peerConnection.setRemoteDescription(new SimpleSdpObserver() {
-            @Override
-            public void onSetSuccess() {
-                super.onSetSuccess();
-                createAnswer();
-            }
-        }, sessionDescription);
-    }
-
-    private void createAnswer() {
-        MediaConstraints mediaConstraints = new MediaConstraints();
-        mediaConstraints.mandatory.add(
-                new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
-        mediaConstraints.mandatory.add(
-                new MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"));
-
-        peerConnection.createAnswer(new SimpleSdpObserver() {
-            @Override
-            public void onCreateSuccess(SessionDescription sessionDescription) {
-                super.onCreateSuccess(sessionDescription);
-                peerConnection.setLocalDescription(new SimpleSdpObserver(), sessionDescription);
-                try {
-                    sendSDPAnswer(sessionDescription);
-                } catch (JSONException e) {
-                    Log.e(TAG, "Error sending answer: " + e.getMessage());
-                }
-            }
-        }, mediaConstraints);
-    }
-
-    private void sendSDPAnswer(SessionDescription sessionDescription) throws JSONException {
-        JSONObject sdpJson = new JSONObject();
-        sdpJson.put("type", sessionDescription.type.canonicalForm());
-        sdpJson.put("sdp", sessionDescription.description);
-        mSocket.emit("answer", sdpJson, "1234");
-    }
-
-    private void handleIceCandidate(IceCandidate iceCandidate) {
-        try {
-            JSONObject candidateData = new JSONObject();
-            candidateData.put("sdpMid", iceCandidate.sdpMid);
-            candidateData.put("sdpMLineIndex", iceCandidate.sdpMLineIndex);
-            candidateData.put("candidate", iceCandidate.sdp);
-            candidateData.put("roomName", "1234");
-            mSocket.emit("ice", candidateData, "1234");
-        } catch (JSONException e) {
-            Log.e(TAG, "Error sending ICE candidate: " + e.getMessage());
         }
+    @Override
+    public void onStart() {
+        super.onStart();
+        Log.d("onStart","onStart");
     }
 
-    private static class SimpleSdpObserver implements SdpObserver {
-        @Override
-        public void onCreateSuccess(SessionDescription sessionDescription) {}
-        @Override
-        public void onSetSuccess() {}
-        @Override
-        public void onCreateFailure(String s) {}
-        @Override
-        public void onSetFailure(String s) {}
+    @Override
+    public void onPause() {
+        super.onPause();
+        //requireActivity().unbindService(serviceConnection);
+        Log.d("onPause","onPause");
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (remoteVideoView != null) {
-            remoteVideoView.release();
+        Log.d("onDestroy","onDestroy");
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        Log.d("onViewCreate","onViewCreate");
+        remoteVideoView = view.findViewById(R.id.remote_video_view);
+        if (webRTCService != null && isBound) {
+            // EglBase 컨텍스트로 다시 초기화
+            remoteVideoView.init(webRTCService.getEglBaseContext(), null);
+            remoteVideoView.setMirror(false);
+            remoteVideoView.setEnableHardwareScaler(true);
+
+            Log.d("remoteView Status before addSink","remoteView Status : " + remoteVideoView);
+
+            // 기존 스트리밍 중이던 영상을 새로운 뷰에 다시 연결
+            webRTCService.setRemoteVideoSink(remoteVideoView);
         }
-        if (peerConnection != null) {
-            peerConnection.dispose();
+    }
+
+    private boolean isServiceRunning() {
+        ActivityManager manager = (ActivityManager) requireActivity().getSystemService(Context.ACTIVITY_SERVICE);  // requireActivity() 사용
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (WebRTCService.class.getName().equals(service.service.getClassName())) {
+                return true; // 서비스가 실행 중인 경우
+            }
         }
-        if (peerConnectionFactory != null) {
-            peerConnectionFactory.dispose();
-        }
-        if (eglBase != null) {
-            eglBase.release();
-        }
-        if (mSocket != null) {
-            mSocket.disconnect();
-            mSocket.off();
-        }
+        return false; // 서비스가 실행 중이지 않으면
+    }
+
+    private void setServiceConnection(){
+        serviceConnection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName className, IBinder service) {
+                WebRTCService.LocalBinder binder = (WebRTCService.LocalBinder) service;
+                webRTCService = binder.getService();
+                isBound = true;
+
+                // Initialize video view with service's EglBase context
+                remoteVideoView.init(webRTCService.getEglBaseContext(), null);
+                remoteVideoView.setMirror(false);
+                remoteVideoView.setEnableHardwareScaler(true);
+
+                // Set video sink and data channel observer
+                webRTCService.setRemoteVideoSink(remoteVideoView);
+                webRTCService.setMessageListener(new WebRTCMessageListener() {
+                    @SuppressLint("SetTextI18n")
+                    @Override
+                    public void onMessageReceived(String message) {
+                        // 여기서 메시지를 처리합니다
+                        if(isAdded() && getActivity() != null){
+                            requireActivity().runOnUiThread(()->{
+                                predict.setText("거북목 예측도" + message);
+                            });
+                        }
+                    }
+                });
+            }
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+                webRTCService = null;
+                isBound = false;
+                requireActivity().unbindService(serviceConnection);
+            }
+        };
     }
 }

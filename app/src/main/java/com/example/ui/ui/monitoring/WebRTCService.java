@@ -27,10 +27,10 @@ public class WebRTCService extends Service {
     private PeerConnection peerConnection;
     private Socket mSocket;
     private static final String TAG = "WebRTC_SERVICE";
-    private static final String SOCKET_URL = "http://192.168.35.206:3000";
+    private static final String SOCKET_URL = "http://172.111.97.83:3000";
     private EglBase eglBase;
     private final IBinder binder = new LocalBinder();
-    private VideoSink remoteVideoSink;
+    private VideoSink remoteVideoSink, currentRemoteVideoSink;
     private DataChannel.Observer dataChannelObserver;
     private WebRTCMessageListener messageListener;
 
@@ -45,6 +45,7 @@ public class WebRTCService extends Service {
     private static final int MAX_RECONNECT_ATTEMPTS = 5;
     private int reconnectAttempts = 0;
     private final Handler reconnectHandler = new Handler(Looper.getMainLooper());
+    private VideoTrack remoteVideoTrack;
 
     private final Runnable reconnectRunnable = new Runnable() {
         @Override
@@ -67,12 +68,31 @@ public class WebRTCService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "Service bound");
+
         return binder;
     }
 
     public void setRemoteVideoSink(VideoSink sink) {
         this.remoteVideoSink = sink;
         Log.d(TAG, "Remote video sink set");
+        updateVideoSink();
+    }
+
+    private void updateVideoSink() {
+        if (remoteVideoTrack != null && remoteVideoSink != null && remoteVideoSink != currentRemoteVideoSink) {
+            if (currentRemoteVideoSink != null) {
+                remoteVideoTrack.removeSink(currentRemoteVideoSink);
+            }
+            remoteVideoTrack.addSink(remoteVideoSink);
+            currentRemoteVideoSink = remoteVideoSink;
+        }
+    }
+
+    public void createNewStream() {
+        MediaStream newStream = peerConnectionFactory.createLocalMediaStream("newStream");
+        // 필요한 트랙 추가
+        // newStream.addTrack(...);
+        peerConnection.addStream(newStream);
     }
 
     @Override
@@ -143,11 +163,9 @@ public class WebRTCService extends Service {
             @Override
             public void onAddStream(MediaStream mediaStream) {
                 Log.d(TAG, "onAddStream: " + mediaStream.toString());
-                if (!mediaStream.videoTracks.isEmpty() && remoteVideoSink != null) {
-                    VideoTrack remoteVideoTrack = mediaStream.videoTracks.get(0);
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        remoteVideoTrack.addSink(remoteVideoSink);
-                    });
+                if (!mediaStream.videoTracks.isEmpty()) {
+                    remoteVideoTrack = mediaStream.videoTracks.get(0);
+                    updateVideoSink();
                 }
             }
             @Override
@@ -236,6 +254,7 @@ public class WebRTCService extends Service {
     }
 
     private void startReconnectTimer() {
+
         reconnectHandler.removeCallbacks(reconnectRunnable);
         reconnectAttempts = 0;
         reconnectHandler.postDelayed(reconnectRunnable, RECONNECT_DELAY);
