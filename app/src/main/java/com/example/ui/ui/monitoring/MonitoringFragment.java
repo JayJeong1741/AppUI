@@ -19,6 +19,7 @@ import org.webrtc.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
@@ -34,6 +35,8 @@ public class MonitoringFragment extends Fragment {
 
 //onCreateView -> onViewCreate -> onStart (프래그먼트 실행 시)
 //onPause -> onDestroyView -> onDestroy (프래그먼트에서 뒤로가기, 종료버튼)
+
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container,
@@ -42,7 +45,9 @@ public class MonitoringFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_monitoring, container, false);
 
         predict = view.findViewById(R.id.predict);
-        remoteVideoView = view.findViewById(R.id.remote_video_view);
+
+
+        Log.d("remoteView Status in onCreateView","remoteView Status : " + remoteVideoView);
         Button btnStop = view.findViewById(R.id.button);
         intent = new Intent(requireActivity(), WebRTCService.class);
         if (!isServiceRunning()) {
@@ -76,6 +81,9 @@ public class MonitoringFragment extends Fragment {
             requireActivity().unbindService(serviceConnection);
             isBound = false;
         }
+        // ViewModel에 remoteVideoView 객체 저장
+        SharedViewModel sharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        sharedViewModel.setSurfaceViewRenderer(remoteVideoView);  // remoteVideoView 객체를 ViewModel에 저장
     }
     @Override
     public void onStart() {
@@ -100,11 +108,14 @@ public class MonitoringFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         Log.d("onViewCreate","onViewCreate");
+        remoteVideoView = view.findViewById(R.id.remote_video_view);
         if (webRTCService != null && isBound) {
             // EglBase 컨텍스트로 다시 초기화
             remoteVideoView.init(webRTCService.getEglBaseContext(), null);
             remoteVideoView.setMirror(false);
             remoteVideoView.setEnableHardwareScaler(true);
+
+            Log.d("remoteView Status before addSink","remoteView Status : " + remoteVideoView);
 
             // 기존 스트리밍 중이던 영상을 새로운 뷰에 다시 연결
             webRTCService.setRemoteVideoSink(remoteVideoView);
@@ -148,7 +159,6 @@ public class MonitoringFragment extends Fragment {
                         }
                     }
                 });
-
             }
             @Override
             public void onServiceDisconnected(ComponentName name) {

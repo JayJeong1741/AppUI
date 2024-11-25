@@ -1,6 +1,7 @@
 package com.example.ui.ui.home;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,8 @@ import androidx.navigation.Navigation;
 import com.example.ui.MainActivity;
 import com.example.ui.R;
 import com.example.ui.databinding.FragmentHomeBinding;
+
+import org.webrtc.SurfaceViewRenderer;
 
 public class HomeFragment extends Fragment {
 
@@ -37,6 +40,7 @@ public class HomeFragment extends Fragment {
 
         // NavController 초기화
         navController = Navigation.findNavController(view);
+
 
         // 버튼 초기화
         Button btnMonitoring = view.findViewById(R.id.Monitoring);
@@ -77,4 +81,5 @@ public class HomeFragment extends Fragment {
         super.onDestroyView();
         binding = null;
     }
+
 }
