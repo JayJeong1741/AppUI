@@ -20,7 +20,7 @@
 
     <string name="monthly_data">월간 감지횟수</string>
     <string name="user_name">유저 이름</string>
-
+    <string name="weekly_data">주간 감지횟수</string>
 
 
 </resources>

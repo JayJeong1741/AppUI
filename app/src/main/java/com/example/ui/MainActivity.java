@@ -1,8 +1,12 @@
 package com.example.ui;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.Menu;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -23,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityMainBinding binding;
-    private NavController navController; // NavController를 전역 변수로 선언
+    private NavController navController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,38 +55,53 @@ public class MainActivity extends AppCompatActivity {
                 .setOpenableLayout(drawer)
                 .build();
 
-        // Navigation Drawer와 NavController 연결
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
+
+        // NavigationView 헤더의 TextView 업데이트
+        updateNavigationViewHeader(navigationView);
 
         // NavigationView의 항목 클릭 리스너 설정
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.item_logout) {
-                // 로그아웃 처리
-                logout(); // 로그아웃 메소드 호출
+                logout();
             } else {
-                navController.navigate(id); // ID에 해당하는 프래그먼트로 이동
-                binding.drawerLayout.closeDrawers(); // Drawer 닫기
-            } return true;
+                navController.navigate(id);
+                binding.drawerLayout.closeDrawers();
+            }
+            return true;
         });
+    }
+
+    private void updateNavigationViewHeader(NavigationView navigationView) {
+        // SharedPreferences에서 userId 가져오기
+        SharedPreferences sharedPreferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+        String userId = sharedPreferences.getString("USER_ID", "Unknown User");
+
+        // 헤더 뷰 가져오기
+        View headerView = navigationView.getHeaderView(0);
+
+        // TextView 찾아서 userId 설정
+        TextView userNameTextView = headerView.findViewById(R.id.textView_user_id); // XML에서 TextView ID 확인
+        if (userNameTextView != null) {
+            userNameTextView.setText(userId);
+        }
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
-    public void logout() {
-        // 로그아웃 알림 표시
-        Toast.makeText(this, "로그아웃 되었습니다", Toast.LENGTH_SHORT).show();
 
-        // 로그인 액티비티로 이동
+    public void logout() {
+        Toast.makeText(this, "로그아웃 되었습니다", Toast.LENGTH_SHORT).show();
         Intent intent = new Intent(MainActivity.this, LoginActivity.class);
         startActivity(intent);
-        finish(); // 현재 액티비티 종료
+        finish();
     }
+
     @Override
     public boolean onSupportNavigateUp() {
         return NavigationUI.navigateUp(navController, mAppBarConfiguration) || super.onSupportNavigateUp();

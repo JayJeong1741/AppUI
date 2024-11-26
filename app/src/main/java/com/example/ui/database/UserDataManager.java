@@ -14,7 +14,7 @@ public class UserDataManager {
     public void saveUserData(String id, String name, String password) {
         Map<String, Object> userData = new HashMap<>();
         userData.put("name", name);
-        userData.put("password", name);
+        userData.put("password", password);
 
         firebaseManager.writeData("users/" + id, userData);
     }

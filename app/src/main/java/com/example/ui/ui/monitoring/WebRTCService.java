@@ -2,12 +2,15 @@ package com.example.ui.ui.monitoring;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
+
+import com.example.ui.database.PostureDetectionManager;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -27,13 +30,17 @@ public class WebRTCService extends Service {
     private PeerConnection peerConnection;
     private Socket mSocket;
     private static final String TAG = "WebRTC_SERVICE";
-    private static final String SOCKET_URL = "http://172.111.97.83:3000";
+    private static final String SOCKET_URL = "http://172.171.240.32:3000";
     private EglBase eglBase;
     private final IBinder binder = new LocalBinder();
     private VideoSink remoteVideoSink, currentRemoteVideoSink;
     private DataChannel.Observer dataChannelObserver;
     private WebRTCMessageListener messageListener;
-
+    // 클래스 필드에 Count 및 TARGET_COUNT 선언
+    private int Count = 0; // 카운트를 저장하는 변수
+    private static final int TARGET_COUNT = 5; // 목표 카운트 값
+    PostureDetectionManager manager = new PostureDetectionManager();
+    private String userId; // SharedPreferences에서 가져온 사용자 ID
     // 리스너 설정 메소드
     public void setMessageListener(WebRTCMessageListener listener) {
         this.messageListener = listener;
@@ -98,6 +105,9 @@ public class WebRTCService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        // SharedPreferences에서 로그인 상태 확인
+        SharedPreferences sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        userId = sharedPref.getString("USER_ID", null);
         Log.d(TAG, "Service created");
         eglBase = EglBase.create();
         initWebRTC();
@@ -175,42 +185,58 @@ public class WebRTCService extends Service {
 
             @Override
             public void onDataChannel(DataChannel dataChannel) {
-                    Log.d(TAG, "onDataChannel");
-                    dataChannel.registerObserver(dataChannelObserver);
-                    dataChannel.registerObserver(new DataChannel.Observer() {
-                        @Override
-                        public void onBufferedAmountChange(long previousAmount) {
-                            Log.d(TAG, "Buffered amount changed: " + previousAmount);
-                        }
+                Log.d(TAG, "onDataChannel");
+                dataChannel.registerObserver(dataChannelObserver);
+                dataChannel.registerObserver(new DataChannel.Observer() {
+                    @Override
+                    public void onBufferedAmountChange(long previousAmount) {
+                        Log.d(TAG, "Buffered amount changed: " + previousAmount);
+                    }
 
-                        @Override
-                        public void onStateChange() {
+                    @Override
+                    public void onStateChange() {
 
-                        }
+                    }
 
-                        @Override
-                        public void onMessage(DataChannel.Buffer buffer) {
-                            try {
-                                if (!buffer.binary) {
-                                    ByteBuffer data = buffer.data;
-                                    byte[] bytes = new byte[data.remaining()];
-                                    data.get(bytes);
-                                    final String text = new String(bytes, StandardCharsets.UTF_8);
-                                    Log.d(TAG, "Received text message: " + text);
+                    @Override
+                    public void onMessage(DataChannel.Buffer buffer) {
+                        try {
+                            if (!buffer.binary) {
+                                ByteBuffer data = buffer.data;
+                                byte[] bytes = new byte[data.remaining()];
+                                data.get(bytes);
+                                final String text = new String(bytes, StandardCharsets.UTF_8);
+                                Log.d(TAG, "Received text message: " + text);
+                                // 문자열을 소수점 숫자로 변환
+                                double value = Double.parseDouble(text); // 소수점 포함 숫자 처리
+                                if (value >= 90) {
+                                    Count++;
+                                    Log.d(TAG, "Count 증가: " + Count);
 
-                                    if (messageListener != null) {
-                                        // UI 스레드에서 콜백 실행
-                                        new Handler(Looper.getMainLooper()).post(() -> {
-                                            messageListener.onMessageReceived(text);
-                                        });
+                                    // 목표 도달 시 데이터 저장 및 초기화
+                                    if (Count >= TARGET_COUNT) {
+                                        manager.savePostureData(userId);
+                                        Log.d(TAG, "Posture data saved");
+                                        Count = 0; // 카운트 초기화
                                     }
+                                } else {
+                                    // 90 이하의 데이터가 들어오면 카운트 초기화
+                                    Count = 0;
+                                    Log.d(TAG, "Count 초기화: " + Count);
                                 }
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error processing message: " + e.getMessage());
+                                if (messageListener != null) {
+                                    // UI 스레드에서 콜백 실행
+                                    new Handler(Looper.getMainLooper()).post(() -> {
+                                        messageListener.onMessageReceived(text);
+                                    });
+                                }
                             }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error processing message: " + e.getMessage());
                         }
+                    }
 
-                    });
+                });
 
             }
 

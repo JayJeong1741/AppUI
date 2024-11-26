@@ -1,5 +1,6 @@
 package com.example.ui.ui.user; // 패키지 이름에 맞게 조정하세요.
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -55,6 +56,14 @@ public class LoginActivity extends AppCompatActivity {
 
                         // 비밀번호 확인
                         if (password.equals(storedPassword)) {
+
+                            // 로그인 성공 시 SharedPreferences에 사용자 정보 저장
+                            SharedPreferences sharedPref = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+                            SharedPreferences.Editor editor = sharedPref.edit();
+                            editor.putString("USER_ID", id); // 사용자 ID 저장
+                            editor.putBoolean("IS_LOGGED_IN", true); // 로그인 상태 저장
+                            editor.apply();
+
                             // 로그인 성공 시 메인 액티비티로 이동
                             Toast.makeText(LoginActivity.this, "로그인 성공", Toast.LENGTH_SHORT).show();
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);

@@ -1,5 +1,7 @@
 package com.example.ui.ui.home;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -72,6 +74,12 @@ public class HomeFragment extends Fragment {
             // MainActivity의 logout() 메소드를 호출
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).logout();
+                // 로그아웃 처리
+                SharedPreferences sharedPref = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPref.edit();
+                editor.remove("USER_ID");
+                editor.remove("IS_LOGGED_IN");
+                editor.apply();
             }
         });
     }
