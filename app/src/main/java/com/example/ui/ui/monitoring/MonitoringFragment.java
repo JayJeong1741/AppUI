@@ -103,7 +103,7 @@ public class MonitoringFragment extends Fragment {
         super.onDestroy();
         Log.d("onDestroy","onDestroy");
     }
-
+dasdsa
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
