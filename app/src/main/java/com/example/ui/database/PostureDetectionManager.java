@@ -22,9 +22,6 @@ public class PostureDetectionManager extends FirebaseManager {
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(new Date());
 
-        // 9시간 추가 (한국 표준시)
-        calendar.add(Calendar.HOUR, 9);
-
         // 새로운 시간 포맷팅
         String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(calendar.getTime());
 
