@@ -10,6 +10,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
+
 public class PostureDetectionManager extends FirebaseManager {
     private static final String TAG = "PostureDetectionManager";
 
@@ -21,9 +23,10 @@ public class PostureDetectionManager extends FirebaseManager {
         // 현재 시간 가져오기
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(new Date());
-
         // 새로운 시간 포맷팅
-        String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(calendar.getTime());
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+        String timestamp = sdf.format(calendar.getTime());
 
         // 저장할 데이터 맵 생성
         Map<String, Object> data = new HashMap<>();
