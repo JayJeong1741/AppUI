@@ -6,27 +6,8 @@
     android:layout_height="match_parent">
 
     <!-- 상단 바 -->
-    <View
-        android:id="@+id/top_bar"
-        android:layout_width="0dp"
-        android:layout_height="60dp"
-        android:background="@color/material_dynamic_neutral50"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- 모니터링 라벨 -->
-    <TextView
-        android:id="@+id/monitoring_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@android:color/transparent"
-        android:padding="16dp"
-        android:text="@string/monitoring_label"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/top_bar" />
 
     <!-- 실시간 영상 확인용 -->
 

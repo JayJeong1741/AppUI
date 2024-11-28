@@ -7,14 +7,6 @@
     tools:context=".MainActivity">
 
     <!-- 상단 바 -->
-    <View
-        android:id="@+id/top_bar"
-        android:layout_width="0dp"
-        android:layout_height="60dp"
-        android:background="@color/material_dynamic_neutral50"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
 
     <!-- 사용자 이름 표시 -->
     <TextView
